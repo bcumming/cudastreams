@@ -15,7 +15,7 @@ void sum(double* a, double* b, double* c, size_t N) {
     size_t tid = threadIdx.x + blockDim.x*blockIdx.x;
     size_t grid_step = blockDim.x * gridDim.x;
 
-    if(tid<N) {
+    while(tid<N) {
         a[tid] = b[tid] + c[tid];
         tid += grid_step;
     }
@@ -41,8 +41,11 @@ int main(void) {
 
     {
         const size_t N=128*1024*1024;
-        const size_t block_dim = 192;
-        const size_t grid_dim = N/block_dim + (N%block_dim ? 1 : 0);
+        unsigned int block_dim = 128;
+        unsigned int grid_dim = N/block_dim + (N%block_dim ? 1 : 0);
+        grid_dim = grid_dim > 1024 ? 1024 : grid_dim;
+        dim3 block(block_dim);
+        dim3 grid(grid_dim);
         std::cout << "launch grid : " << block_dim << "*" << grid_dim << std::endl;
 
         double *a_d, *b_d, *c_d;
@@ -54,7 +57,7 @@ int main(void) {
         double *b_h = new double[N];
         double *c_h = new double[N];
 
-        for(int i=0; i<N; ++i) {
+        for(size_t i=0; i<N; ++i) {
             a_h[i] = 0.;
             b_h[i] = 1.;
             c_h[i] = 1.;
@@ -66,17 +69,22 @@ int main(void) {
         CudaEvent e;
 
         double time_init = omp_get_wtime();
-        sum<<<block_dim, grid_dim, 0, s.stream()>>>(a_d, b_d, c_d, N);
+
+        sum<<<block, grid, 0, s.stream()>>>(a_d, b_d, c_d, N);
+
         e.insert_in_stream(sdefault);
 
         double time_before_wait = omp_get_wtime();
-        //e.wait();
+        e.wait();
+        cudaDeviceSynchronize();
         double time_after_wait  = omp_get_wtime();
         std::cout << "took " << time_before_wait-time_init << " " << time_after_wait-time_init << std::endl;
 
         cudaMemcpy(a_h, a_d, N*sizeof(double), cudaMemcpyDeviceToHost);
-        for(int i=0; i<16; ++i)
-            std::cout << a_h[i] << " ";
+        size_t limit = 256;
+        limit = N>limit ? limit : N;
+        for(size_t i=N-limit; i<N; ++i)
+            std::cout << a_h[i] << ((i+1)%block_dim ? " " : " | ");
         std::cout <<  std::endl;
     }
 
