@@ -50,7 +50,8 @@ template <typename T>
 T* allocate_on_host(size_t N, T value=T(), bool pinned=false) {
     T* ptr=0;
     if( pinned ) {
-        cudaHostAlloc((void**)&ptr, N*sizeof(T), cudaHostAllocPortable);
+        //cudaHostAlloc((void**)&ptr, N*sizeof(T), cudaHostAllocPortable);
+        cudaMallocHost((void**)&ptr, N*sizeof(T));
     }
     else {
         ptr = reinterpret_cast<T*>(malloc(N*sizeof(T)));
@@ -117,10 +118,6 @@ int main(void) {
     assert(!stream_D2H.is_default_stream());
     assert(!stream_compute.is_default_stream());
 
-    CudaEvent event_H2D;
-    CudaEvent event_compute;
-    CudaEvent event_D2H;
-
     Launch launch(N, 128);
     std::cout << "launch grid : " << launch.block_dim() << "*" << launch.grid_dim() << std::endl;
 
@@ -136,18 +133,23 @@ int main(void) {
     cudaMemcpyAsync(b_d, b_h, size, cudaMemcpyHostToDevice, stream_H2D.stream());
 
     // insert events that force compute stream to wait
-    stream_H2D.insert_event(event_H2D);
+    std::cout << "INSERTING" << std::endl;
+    CudaEvent event_H2D =
+        stream_H2D.insert_event();
+    std::cout << "END INSERTING" << std::endl;
     stream_compute.wait_on_event(event_H2D);
 
     // asynchronously execute the kernel
     sum<<<launch.block(), launch.grid(), 0, stream_compute.stream()>>>(a_d, b_d, N);
 
     // insert event
-    stream_compute.insert_event(event_compute);
+    CudaEvent event_compute =
+        stream_compute.insert_event();
     stream_D2H.wait_on_event(event_compute);
 
     cudaMemcpyAsync(a_h, a_d, size, cudaMemcpyDeviceToHost, stream_D2H.stream());
-    stream_D2H.insert_event(event_D2H);
+    CudaEvent event_D2H =
+        stream_D2H.insert_event();
 
     event_D2H.wait();
 

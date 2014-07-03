@@ -15,7 +15,7 @@ class CudaEvent {
             cudaEventCreate(&event_);
 
         #ifdef DEBUG_MSG
-        std::cout << "CudaEvent() " << event_ << std::endl;
+        std::cout << "CudaEvent() :: " << event_ << std::endl;
         #endif
         assert(status == cudaSuccess);
     }
@@ -28,7 +28,7 @@ class CudaEvent {
     ~CudaEvent() {
 
         #ifdef DEBUG_MSG
-        std::cout << "~CudaEvent() " << event_ << std::endl;
+        std::cout << "~CudaEvent() :: " << event_ << std::endl;
         #endif
         cudaEventDestroy(event_);
     }
@@ -39,11 +39,6 @@ class CudaEvent {
 
     // force host execution to wait for event completion
     void wait() {
-        #ifdef DEBUG_MSG
-        if(!in_use())
-            std::cout << "CudaEvent " << event_ << " :: WARNING :: wait() called on event that has not been locked" << std::endl;
-        #endif
-
         // the event isn't actually in use, so just return
         cudaError_t status =
             cudaEventSynchronize(event_);

@@ -8,11 +8,7 @@ else
 	LINKER_FLAGS=$(CRAY_CUDATOOLKIT_POST_LINK_OPTS)
 endif
 
-all : futures.exe transfer.exe
-
-futures.exe : futures.cu $(HEADERS)
-	nvcc -c futures.cu $(NVCC_FLAGS)
-	gcc futures.o $(LINKER_FLAGS) -o futures.exe -fopenmp
+all : transfer.exe
 
 transfer.exe : transfer.cu $(HEADERS)
 	nvcc -c transfer.cu $(NVCC_FLAGS)

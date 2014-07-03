@@ -52,15 +52,17 @@ class CudaStream {
 
     // insert event into stream
     // returns immediately
-    void insert_event(CudaEvent &e) {
-        //cudaError_t status =
-            //cudaEventRecord(e.event(), stream_);
+    CudaEvent insert_event() {
+        CudaEvent e;
 
-        // set the event as being in use
-        //e.lock();
-        e.record(stream_);
-
+        cudaError_t status =
+            cudaEventRecord(e.event(), stream_);
         assert(status == cudaSuccess);
+
+        // or make event do the work?
+        //e.record(*this);
+
+        return e;
     }
 
     // make all future work on stream wait until event has completed.
