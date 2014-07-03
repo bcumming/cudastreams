@@ -72,12 +72,12 @@ int main(void) {
 
         sum<<<block, grid, 0, s.stream()>>>(a_d, b_d, c_d, N);
 
-        e.insert_in_stream(sdefault);
+        s.insert_event(e);
 
         double time_before_wait = omp_get_wtime();
-        e.wait();
-        cudaDeviceSynchronize();
+        s.wait_on_event(e);
         double time_after_wait  = omp_get_wtime();
+        e.wait();
         std::cout << "took " << time_before_wait-time_init << " " << time_after_wait-time_init << std::endl;
 
         cudaMemcpy(a_h, a_d, N*sizeof(double), cudaMemcpyDeviceToHost);

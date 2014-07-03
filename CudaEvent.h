@@ -5,50 +5,52 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#include "CudaStream.h"
-
 // wrapper around cuda events
 class CudaEvent {
-    public:
+  public:
 
     // constructor
-    CudaEvent() : set_(false) {
+    CudaEvent() {
         cudaError_t status = 
             cudaEventCreate(&event_);
 
+        #ifdef DEBUG_MSG
+        std::cout << "CudaEvent() " << event_ << std::endl;
+        #endif
         assert(status == cudaSuccess);
     }
 
-    // constructor that will create and insert in a stream
-    CudaEvent(CudaStream& s) : set_(false) {
-        insert_in_stream(s);
-    }
-
     // desctructor
+    // no need to wait for event to finish:
+    // in the case that an event has been recorded and not yet completed, cudaEventDestroy()
+    // will return immediately, and the resources associated with the event will be released automatically
+    // when the event finishes.
     ~CudaEvent() {
+
+        #ifdef DEBUG_MSG
+        std::cout << "~CudaEvent() " << event_ << std::endl;
+        #endif
         cudaEventDestroy(event_);
     }
 
-    // insert the event into a stream
-    CudaEvent& insert_in_stream(CudaStream &stream) {
-        cudaError_t status =
-            cudaEventRecord(event_, stream.stream());
-        if(status == cudaSuccess) {
-            set_ = true;
-        }
-
-        return *this;
+    cudaEvent_t& event() {
+        return event_;
     }
 
+    // force host execution to wait for event completion
     void wait() {
+        #ifdef DEBUG_MSG
+        if(!in_use())
+            std::cout << "CudaEvent " << event_ << " :: WARNING :: wait() called on event that has not been locked" << std::endl;
+        #endif
+
+        // the event isn't actually in use, so just return
         cudaError_t status =
             cudaEventSynchronize(event_);
-        set_ = false;
     }
 
-    private:
+  private:
 
     cudaEvent_t event_;
-    bool set_;
 };
 

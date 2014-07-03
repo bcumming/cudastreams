@@ -22,9 +22,11 @@
 
 # intermediate files
 *.ptx
+*.profile
 
 # vim temporaries
 *.swp
 *.swa
 *.swn
 *.swo
+
