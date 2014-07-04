@@ -19,7 +19,8 @@ void sum(double* a, double* b, size_t N) {
     size_t grid_step = blockDim.x * gridDim.x;
 
     while(tid<N) {
-        a[tid] += b[tid];
+        for(int i=0; i<10; ++i)
+            a[tid] += exp(a[tid])+b[tid];
         tid += grid_step;
     }
 }
@@ -51,9 +52,11 @@ T* allocate_on_host(size_t N, T value=T(), bool pinned=false) {
     T* ptr=0;
     if( pinned ) {
         //cudaHostAlloc((void**)&ptr, N*sizeof(T), cudaHostAllocPortable);
+        std::cout << "allocating " << N*sizeof(T) << " bytes pinned host data" << std::endl;
         cudaMallocHost((void**)&ptr, N*sizeof(T));
     }
     else {
+        std::cout << "allocating " << N*sizeof(T) << " bytes unpinned host data" << std::endl;
         ptr = reinterpret_cast<T*>(malloc(N*sizeof(T)));
     }
     std::fill(ptr, ptr+N, value);
@@ -100,7 +103,10 @@ class Launch {
 int main(void) {
 
     const size_t N=128*1024*1024;
+    const size_t nchunks=16;
+    const size_t chunk_dim=N/nchunks;
     const size_t size = sizeof(double)*N;
+    const size_t chunk_size = size/nchunks;
 
     // initialize CUDA
     if(!initialize_cuda()) {
@@ -129,35 +135,51 @@ int main(void) {
     double *b_h = allocate_on_host<double>(N, 1., true);
 
     // copy data to device
-    cudaMemcpyAsync(a_d, a_h, size, cudaMemcpyHostToDevice, stream_H2D.stream());
-    cudaMemcpyAsync(b_d, b_h, size, cudaMemcpyHostToDevice, stream_H2D.stream());
+    for(int i=0; i<nchunks; ++i) {
+        //cudaMemcpyAsync(a_d, a_h, size, cudaMemcpyHostToDevice, stream_H2D.stream());
+        //cudaMemcpyAsync(b_d, b_h, size, cudaMemcpyHostToDevice, stream_H2D.stream());
+        cudaMemcpyAsync(a_d, a_h, chunk_size, cudaMemcpyHostToDevice, stream_H2D.stream());
+        cudaMemcpyAsync(b_d, b_h, chunk_size, cudaMemcpyHostToDevice, stream_H2D.stream());
 
-    // insert events that force compute stream to wait
-    std::cout << "INSERTING" << std::endl;
-    CudaEvent event_H2D =
-        stream_H2D.insert_event();
-    std::cout << "END INSERTING" << std::endl;
-    stream_compute.wait_on_event(event_H2D);
+        // insert events that force compute stream to wait
+        CudaEvent event_H2D = stream_H2D.insert_event();
+        stream_compute.wait_on_event(event_H2D);
 
-    // asynchronously execute the kernel
-    sum<<<launch.block(), launch.grid(), 0, stream_compute.stream()>>>(a_d, b_d, N);
+        // asynchronously execute the kernel
+        //sum<<<launch.block(), launch.grid(), 0, stream_compute.stream()>>>(a_d, b_d, N);
+        sum<<<launch.block(), launch.grid(), 0, stream_compute.stream()>>>(a_d, b_d, chunk_dim);
 
-    // insert event
-    CudaEvent event_compute =
-        stream_compute.insert_event();
-    stream_D2H.wait_on_event(event_compute);
+        // insert event
+        CudaEvent event_compute =
+            stream_compute.insert_event();
+        stream_D2H.wait_on_event(event_compute);
 
-    cudaMemcpyAsync(a_h, a_d, size, cudaMemcpyDeviceToHost, stream_D2H.stream());
-    CudaEvent event_D2H =
-        stream_D2H.insert_event();
+        //cudaMemcpyAsync(a_h, a_d, size, cudaMemcpyDeviceToHost, stream_D2H.stream());
+        cudaMemcpyAsync(a_h, a_d, chunk_size, cudaMemcpyDeviceToHost, stream_D2H.stream());
+        CudaEvent event_D2H =
+            stream_D2H.insert_event();
 
-    event_D2H.wait();
+        a_d += chunk_dim;
+        b_d += chunk_dim;
+        a_h += chunk_dim;
+        b_h += chunk_dim;
+    }
 
+    //event_D2H.wait();
+
+    /*
     size_t limit = 256;
     limit = N>limit ? limit : N;
+    double result = 0.;
     for(size_t i=N-limit; i<N; ++i)
         std::cout << a_h[i] << ((i+1)%launch.block_dim() ? " " : " | ");
-    std::cout <<  std::endl;
+    #pragma omp parallel for reduction(+:result)
+    for(size_t i=0; i<N; ++i)
+        result += 2. - a_h[i];
+    std::cout << std::endl;
+
+    std::cout << "result : " << result << std::endl;
+    */
 
     return 0;
 }
