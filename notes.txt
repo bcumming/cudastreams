@@ -1,0 +1,8 @@
+to profile code:
+
+nvprof --output-profile main.profile  ./transfer.exe
+
+to view profile:
+
+nvvp
+

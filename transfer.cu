@@ -19,8 +19,8 @@ void sum(double* a, double* b, size_t N) {
     size_t grid_step = blockDim.x * gridDim.x;
 
     while(tid<N) {
-        for(int i=0; i<10; ++i)
-            a[tid] += exp(a[tid])+b[tid];
+        for(int i=0; i<50; ++i)
+            a[tid] += exp(1./a[tid])+b[tid];
         tid += grid_step;
     }
 }
@@ -103,7 +103,7 @@ class Launch {
 int main(void) {
 
     const size_t N=128*1024*1024;
-    const size_t nchunks=16;
+    const size_t nchunks=1;
     const size_t chunk_dim=N/nchunks;
     const size_t size = sizeof(double)*N;
     const size_t chunk_size = size/nchunks;
@@ -133,6 +133,8 @@ int main(void) {
 
     double *a_h = allocate_on_host<double>(N, 1., true);
     double *b_h = allocate_on_host<double>(N, 1., true);
+
+    CudaEvent event_start = stream_H2D.insert_event();
 
     // copy data to device
     for(int i=0; i<nchunks; ++i) {
@@ -165,7 +167,10 @@ int main(void) {
         b_h += chunk_dim;
     }
 
-    //event_D2H.wait();
+    CudaEvent event_end = stream_D2H.insert_event();
+    event_end.wait();
+    double time_taken = event_end.time_since(event_start);
+    std::cout << "that took " << time_taken << " seconds" << std::endl;
 
     /*
     size_t limit = 256;
