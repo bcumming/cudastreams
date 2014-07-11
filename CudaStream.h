@@ -35,7 +35,9 @@ class CudaStream {
         if(stream_) {
             cudaError_t status = cudaStreamDestroy(stream_);
             #ifdef DEBUG_MSG
-            std::cout << (status==cudaSuccess ? "\t\tdestroyed" : "\t\tunable to destroy") << std::endl;
+            std::cout << (status==cudaSuccess ? "\t\tdestroyed"
+                                              : "\t\tunable to destroy")
+                      << std::endl;
             #endif
             assert(status == cudaSuccess);
         }

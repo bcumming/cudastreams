@@ -24,9 +24,9 @@ class CudaEvent {
 
     // desctructor
     // no need to wait for event to finish:
-    // in the case that an event has been recorded and not yet completed, cudaEventDestroy()
-    // will return immediately, and the resources associated with the event will be released automatically
-    // when the event finishes.
+    // in the case that an event has been recorded and not yet completed,
+    // cudaEventDestroy() will return immediately, and the resources associated
+    // with the event will be released automatically when the event finishes.
     ~CudaEvent() {
 
         #ifdef DEBUG_MSG
