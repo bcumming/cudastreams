@@ -138,33 +138,25 @@ int main(void) {
 
     // copy data to device
     for(int i=0; i<nchunks; ++i) {
-        //cudaMemcpyAsync(a_d, a_h, size, cudaMemcpyHostToDevice, stream_H2D.stream());
-        //cudaMemcpyAsync(b_d, b_h, size, cudaMemcpyHostToDevice, stream_H2D.stream());
-        cudaMemcpyAsync(a_d, a_h, chunk_size, cudaMemcpyHostToDevice, stream_H2D.stream());
-        cudaMemcpyAsync(b_d, b_h, chunk_size, cudaMemcpyHostToDevice, stream_H2D.stream());
+        size_t offset = i*chunk_dim;
+        cudaMemcpyAsync(a_d+offset, a_h+offset, chunk_size, cudaMemcpyHostToDevice, stream_H2D.stream());
+        cudaMemcpyAsync(b_d+offset, b_h+offset, chunk_size, cudaMemcpyHostToDevice, stream_H2D.stream());
 
         // insert events that force compute stream to wait
         CudaEvent event_H2D = stream_H2D.insert_event();
         stream_compute.wait_on_event(event_H2D);
 
         // asynchronously execute the kernel
-        //sum<<<launch.block(), launch.grid(), 0, stream_compute.stream()>>>(a_d, b_d, N);
-        sum<<<launch.block(), launch.grid(), 0, stream_compute.stream()>>>(a_d, b_d, chunk_dim);
+        sum<<<launch.block(), launch.grid(), 0, stream_compute.stream()>>>(a_d+offset, b_d+offset, chunk_dim);
 
         // insert event
         CudaEvent event_compute =
             stream_compute.insert_event();
         stream_D2H.wait_on_event(event_compute);
 
-        //cudaMemcpyAsync(a_h, a_d, size, cudaMemcpyDeviceToHost, stream_D2H.stream());
-        cudaMemcpyAsync(a_h, a_d, chunk_size, cudaMemcpyDeviceToHost, stream_D2H.stream());
+        cudaMemcpyAsync(a_h+offset, a_d+offset, chunk_size, cudaMemcpyDeviceToHost, stream_D2H.stream());
         CudaEvent event_D2H =
             stream_D2H.insert_event();
-
-        a_d += chunk_dim;
-        b_d += chunk_dim;
-        a_h += chunk_dim;
-        b_h += chunk_dim;
     }
 
     CudaEvent event_end = stream_D2H.insert_event();
