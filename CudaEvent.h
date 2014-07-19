@@ -11,7 +11,9 @@
 class CudaEvent {
   public:
 
+    //////////////////////////////////
     // constructor
+    //////////////////////////////////
     CudaEvent() {
         cudaError_t status = 
             cudaEventCreate(&event_);
@@ -22,11 +24,15 @@ class CudaEvent {
         assert(status == cudaSuccess);
     }
 
+    ////////////////////////////////////////////////////////////////////
     // desctructor
-    // no need to wait for event to finish:
+    ////////////////////////////////////////////////////////////////////
+    // there is no need to wait for event to finish:
     // in the case that an event has been recorded and not yet completed, cudaEventDestroy()
     // will return immediately, and the resources associated with the event will be released automatically
     // when the event finishes.
+    // Furthermore once an cudaEvent_t has been used to synchronize a stream, it can be destroyed and the
+    // stream won't be affected (it will still synchronize on the event)
     ~CudaEvent() {
 
         #ifdef DEBUG_MSG
@@ -35,18 +41,25 @@ class CudaEvent {
         cudaEventDestroy(event_);
     }
 
+    ////////////////////////////////////////////////////////////////////
+    // return an event handle
+    ////////////////////////////////////////////////////////////////////
     cudaEvent_t& event() {
         return event_;
     }
 
+    ////////////////////////////////////////////////////////////////////
     // force host execution to wait for event completion
+    ////////////////////////////////////////////////////////////////////
     void wait() {
         // the event isn't actually in use, so just return
         cudaError_t status =
             cudaEventSynchronize(event_);
     }
 
+    ////////////////////////////////////////////////////////////////////
     // returns time in seconds taken between this cuda event and another cuda event
+    ////////////////////////////////////////////////////////////////////
     // returns NaN if there is an error
     // time is this - other
     double time_since(CudaEvent &other) {

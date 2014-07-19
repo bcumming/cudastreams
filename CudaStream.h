@@ -10,11 +10,15 @@
 // wrapper around cuda streams
 class CudaStream {
   public:
+    ////////////////////////////////////////////////////////////////////
     // default constructor
     // sets to the default stream 0
+    ////////////////////////////////////////////////////////////////////
     CudaStream() : stream_(0) {};
 
+    ////////////////////////////////////////////////////////////////////
     // constructor with flag for whether or not to create a new stream
+    ////////////////////////////////////////////////////////////////////
     // if no stream is to be created, then default stream 0 is used
     CudaStream(bool create_new_stream) {
         stream_ = 0;
@@ -27,7 +31,9 @@ class CudaStream {
         #endif
     }
 
+    ////////////////////////////////////////////////////////////////////
     // destructor
+    ////////////////////////////////////////////////////////////////////
     ~CudaStream() {
         #ifdef DEBUG_MSG
         std::cout << "\t~CudaStream() -> " << stream_ << std::endl;
@@ -41,16 +47,23 @@ class CudaStream {
         }
     }
 
+    ////////////////////////////////////////////////////////////////////
+    // returns boolean indicating whether this is the default (NULL) stream
+    ////////////////////////////////////////////////////////////////////
     bool is_default_stream() {
         return stream_==0;
     }
 
+    ////////////////////////////////////////////////////////////////////
     // return the cuda Stream handle
+    ////////////////////////////////////////////////////////////////////
     cudaStream_t stream() {
         return stream_;
     }
 
+    ////////////////////////////////////////////////////////////////////
     // insert event into stream
+    ////////////////////////////////////////////////////////////////////
     // returns immediately
     CudaEvent insert_event() {
         CudaEvent e;
@@ -59,13 +72,12 @@ class CudaStream {
             cudaEventRecord(e.event(), stream_);
         assert(status == cudaSuccess);
 
-        // or make event do the work?
-        //e.record(*this);
-
         return e;
     }
 
+    ////////////////////////////////////////////////////////////////////
     // make all future work on stream wait until event has completed.
+    ////////////////////////////////////////////////////////////////////
     // returns immediately, not waiting for event to complete
     void wait_on_event(CudaEvent &e) {
         cudaError_t status =
@@ -76,8 +88,9 @@ class CudaStream {
 
   private:
 
-    // helper that creates a new CUDA stream by calling the 
-    // CUDA API function cudaStreamCreate()
+    ////////////////////////////////////////////////////////////////////
+    // helper that creates a new CUDA stream using CUDA API
+    ////////////////////////////////////////////////////////////////////
     cudaStream_t new_stream() {
         cudaStream_t s;
         cudaError_t status =
